@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": ["mcp__whatsapp", "Read", "Edit", "Write", "MultiEdit", "Bash"],
+    "deny": [
+      "Bash(rm:*)", "Bash(rmdir:*)", "Bash(shutdown:*)", "Bash(reboot:*)",
+      "Bash(mkfs:*)", "Bash(dd:*)", "Bash(del:*)", "Bash(format:*)", "Bash(diskpart:*)"
+    ]
+  }
+}

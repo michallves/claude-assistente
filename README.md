@@ -1,0 +1,88 @@
+# claude-assistente
+
+Um assistente pessoal que você comanda pelo WhatsApp e que roda o **Claude Code**
+por trás. Você manda uma mensagem (texto, áudio, imagem ou arquivo) para um grupo
+só seu, o Claude decide o que fazer e responde no mesmo chat.
+
+O assistente **não tem ferramentas próprias**. Tudo o que ele sabe fazer vem dos
+MCPs que você já configurou no seu Claude Code (WhatsApp, navegador, ClickUp,
+Notion, GitHub, o que for). Adicionou um MCP novo ao Claude Code? O assistente
+passa a usá-lo, sem mexer neste repositório.
+
+```
+WhatsApp ──► bridge (whatsapp-mcp) ──webhook──► claude-assistente ──► Claude Code ──► seus MCPs
+   ▲                                                                                    │
+   └──────────────────────── resposta pelo /api/send da bridge ◄────────────────────────┘
+```
+
+## Peças
+
+| Peça | O que faz |
+|---|---|
+| [`whatsapp-mcp`](https://github.com/michallves/whatsapp-mcp) | Bridge do WhatsApp (envia o webhook e recebe a resposta) e MCP com as ferramentas de WhatsApp. Repositório separado. |
+| `canal_whatsapp.py` | Recebe o webhook, filtra pelo chat do admin e devolve a resposta. |
+| `cerebro.py` | Mantém uma sessão do Claude Code viva e conversa com ela. |
+| `main.py` | Fila de tarefas, comandos locais (parar, silencioso), rotinas agendadas. |
+| `rotinas.py` | Rotinas agendadas (por exemplo, um bom dia todo dia às 8h). |
+| `CLAUDE.md` | Instruções permanentes do assistente e regras de segurança. |
+
+## Requisitos
+
+- Python 3.10+, Node.js 18+
+- [Claude Code](https://docs.claude.com/en/docs/claude-code) instalado e logado
+- O [`whatsapp-mcp`](https://github.com/michallves/whatsapp-mcp) rodando e pareado, e registrado como MCP no seu Claude Code (servidor chamado `whatsapp`)
+
+## Instalação
+
+```bash
+git clone https://github.com/michallves/claude-assistente
+cd claude-assistente
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+mkdir -p secrets
+```
+
+1. Crie um grupo no WhatsApp só com você (ex.: "Claude Assistent") e descubra o JID dele (`...@g.us`) com `list_chats` do MCP.
+2. Grave o JID e o token da bridge:
+   ```bash
+   printf '%s' '<jid-do-grupo>@g.us' > secrets/admin_jid.txt
+   cp <pasta-da-bridge>/store/.bridge-token secrets/bridge_token.txt
+   ```
+3. Na bridge, aponte o webhook para o assistente:
+   ```bash
+   WEBHOOK_ENABLED=true
+   WEBHOOK_URL=http://127.0.0.1:8100/webhook
+   ```
+4. Suba o assistente:
+   ```bash
+   python main.py
+   ```
+
+Mande uma mensagem no grupo. Só esse chat é atendido; mensagens de qualquer outro
+chat são descartadas antes de chegar ao Claude.
+
+## Usando outros MCPs
+
+O Claude Code roda dentro da pasta do projeto e herda os MCPs que você tem
+configurados. Para o assistente poder chamá-los sem pedir permissão a cada uso,
+liste o servidor em `.claude/settings.json`:
+
+```json
+{ "permissions": { "allow": ["mcp__whatsapp", "mcp__clickup", "mcp__github"] } }
+```
+
+## Segurança
+
+O assistente aceita ordens e executa ações na sua máquina e nas suas contas.
+Trate-o como acesso remoto:
+
+- Só o chat configurado em `ADMIN_JID` é atendido. Use um grupo só seu.
+- Não existe confirmação mecânica no app. Quem decide quando pedir confirmação
+  é o Claude, guiado pelo `CLAUDE.md`. Leia esse arquivo antes de dar acesso a
+  algo sensível.
+- Segredos ficam em `secrets/` ou em variáveis de ambiente, nunca no código.
+- `MEMORIA.md`, `rotinas.json` e `log.txt` são locais e ficam fora do git.
+
+## Licença
+
+MIT.

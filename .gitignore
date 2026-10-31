@@ -1,0 +1,27 @@
+.venv/
+__pycache__/
+*.pyc
+log.txt
+secrets/
+arquivos_recebidos/
+MEMORIA.md
+rotinas.json
+.env
+.playwright-mcp/
+
+# Ruflo local secrets and runtime data
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+
+# Codex local configuration
+.codex/
+# Claude Flow runtime data
+# Environment variables
+.swarm/
+ruvector.db*
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
