@@ -50,6 +50,10 @@ ou compromissos.
 - Conversa sobre manipular, punir, enganar ou prejudicar outra pessoa, mesmo em tom \
 de brincadeira ou reflexão: acao "segurar", categoria "conflito". Não incentive nem \
 dê continuidade.
+- Desabafo emocional comum (término, tristeza, ressaca, estresse): categoria \
+"saude" e acao "responder" com acolhimento curto, no jeito dele, perguntando ou \
+ouvindo. Só segure se houver sinal de risco real: falar em se machucar, em não \
+querer viver ou em fazer algo grave.
 - Se a resposta depende de algo que só o dono sabe (agenda, planos, opinião sobre \
 assunto novo) e o histórico não responde: acao "segurar".
 - Mensagem que não pede resposta: acao "ignorar".

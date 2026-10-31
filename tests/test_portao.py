@@ -636,3 +636,44 @@ class TestComandos(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSaudeLiberadaPorChat(unittest.TestCase):
+    def setUp(self):
+        self.pasta = tempfile.TemporaryDirectory()
+        self.addCleanup(self.pasta.cleanup)
+        for nome, valor in {"ARQUIVO_ESTADO_PILOTO": os.path.join(self.pasta.name, "e.json"),
+                            "CHATS_SAUDE_LIBERADA": {"1@s.whatsapp.net"}}.items():
+            p = mock.patch.object(config, nome, valor, create=True)
+            p.start()
+            self.addCleanup(p.stop)
+        portao._limpar_memoria()
+        self.addCleanup(portao._limpar_memoria)
+        portao.assumir_tudo()
+
+    def decidir(self, chat, categoria, msg="to mal pelo fim", texto="Pode contar"):
+        ev = Evento(chat, "m", chat, msg, False)
+        return portao.decidir(ev, Proposta(acao=Acao.RESPONDER, texto=texto, categoria=categoria))
+
+    def test_chat_liberado_acolhe(self):
+        self.assertIs(self.decidir("1@s.whatsapp.net", "saude").veredito, Veredito.ENVIAR)
+
+    def test_outro_chat_continua_segurando(self):
+        self.assertIs(self.decidir("2@s.whatsapp.net", "saude").veredito, Veredito.CHAMAR_DONO)
+
+    def test_outras_linhas_vermelhas_nao_sao_liberadas(self):
+        for cat in ("dinheiro", "contrato", "rh", "conflito", "seguranca", "producao"):
+            self.assertIs(self.decidir("1@s.whatsapp.net", cat).veredito, Veredito.CHAMAR_DONO, cat)
+
+    def test_sinal_de_risco_chama_o_dono_mesmo_no_chat_liberado(self):
+        for frase in ("quero me matar", "Não quero mais viver", "penso em suicídio",
+                      "vou me machucar", "tomar todos os remédios"):
+            self.assertIs(self.decidir("1@s.whatsapp.net", "saude", msg=frase).veredito,
+                          Veredito.CHAMAR_DONO, frase)
+        self.assertIs(self.decidir("1@s.whatsapp.net", "geral", msg="quero me matar").veredito,
+                      Veredito.CHAMAR_DONO)
+
+    def test_conversa_comum_nao_dispara_risco(self):
+        for frase in ("matei a charada kkk", "to morrendo de sono", "me cortaram do grupo"):
+            self.assertIs(self.decidir("1@s.whatsapp.net", "geral", msg=frase).veredito,
+                          Veredito.ENVIAR, frase)

@@ -325,6 +325,26 @@ def _no_escopo(atual: Estado, chat_jid: str) -> bool:
     return any(chat_jid in jids for jids in atual.escopos.values())
 
 
+# Assuntos de saúde e família que o dono libera por chat, para amigos que ele conhece.
+# Sinal de risco real nunca é liberado: segura e chama o dono em qualquer chat.
+_LIBERAVEIS_POR_CHAT = frozenset({"saude", "familia"})
+_SINAL_GRAVE = re.compile(
+    r"\b(suicid\w*|me matar|se matar|tirar (a )?(minha|propria) vida"
+    r"|acabar com (tudo|a minha vida)|nao quero (mais )?viver|nao aguento mais viver"
+    r"|melhor sem mim|sumir do mundo|me machucar|me cortar|automutila\w*|overdose"
+    r"|tomar (todos os|todo o) (remedio|comprimido)s?)\b")
+
+
+def sinal_grave(*textos: str) -> bool:
+    return any(_SINAL_GRAVE.search(normalizar(t or "")) for t in textos)
+
+
+def _liberado_por_chat(categoria: str, chat_jid: str) -> bool:
+    liberados = getattr(config, "CHATS_SAUDE_LIBERADA", ())
+    return (categoria in _LIBERAVEIS_POR_CHAT
+            and isinstance(liberados, (set, frozenset, list, tuple)) and chat_jid in liberados)
+
+
 def pode_ganhar_tempo(proposta: Proposta, decisao: Decisao) -> bool:
     """Só em resposta segurada por falta do dono, nunca em assunto delicado, pergunta
     sobre ser IA, conteúdo sensível, corte ou chat pausado."""
@@ -366,7 +386,11 @@ def _regras(atual: Estado, evento: Evento, proposta: Proposta) -> Decisao:
         return veredito(Veredito.CHAMAR_DONO, "resposta segurada", regra="segurar")
     if proposta.perguntou_se_ia:
         return veredito(Veredito.CHAMAR_DONO, "perguntaram se é IA", regra="ia")
-    if normalizar(str(proposta.categoria or "")) in CATEGORIAS_LINHA_VERMELHA:
+    categoria = normalizar(str(proposta.categoria or ""))
+    if sinal_grave(evento.texto, proposta.texto):
+        return veredito(Veredito.CHAMAR_DONO, "sinal de risco", regra="risco")
+    if (categoria in CATEGORIAS_LINHA_VERMELHA
+            and not _liberado_por_chat(categoria, evento.chat_jid)):
         return veredito(Veredito.CHAMAR_DONO, "categoria de linha vermelha",
                         regra="linha_vermelha")
 

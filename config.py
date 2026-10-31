@@ -52,6 +52,10 @@ JIDS_DONO = {ADMIN_JID, *_ler_segredo("JIDS_DONO_EXTRA", "jids_dono.txt").split(
 # variável de ambiente, para o padrão do código continuar fechado.
 ENVIO_TERCEIROS_HABILITADO = os.environ.get("ENVIO_TERCEIROS_HABILITADO") == "1"
 
+# Chats em que o piloto pode acolher desabafo (saúde e família), por escolha do dono.
+# Sinal de risco real continua chamando o dono.
+CHATS_SAUDE_LIBERADA = set(_ler_segredo("CHATS_SAUDE_LIBERADA", "chats_saude_liberada.txt").split())
+
 # Contexto do Atendente: histórico da bridge e como o dono escreve.
 DB_MENSAGENS = os.environ.get("WHATSAPP_DB_PATH", os.path.expanduser(
     "~/projects/whatsapp-mcp/whatsapp-bridge/store/messages.db"))
