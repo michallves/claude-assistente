@@ -41,10 +41,15 @@ TIMEOUT_CLAUDE = 300          # segundos — ações de navegador demoram
 BRIDGE_URL = os.environ.get("WHATSAPP_BRIDGE_URL", "http://127.0.0.1:8080")
 BRIDGE_TOKEN = _ler_segredo("WHATSAPP_BRIDGE_TOKEN", "bridge_token.txt")
 
-# Único chat que pode dar ordens ao assistente. Recomendado: um grupo só com
-# o próprio usuário (JID terminado em @g.us). Mensagens de qualquer outro
-# chat são descartadas antes de chegar ao Claude.
+# Único chat que pode dar ordens ao assistente: o do dono consigo mesmo
+# (<número>@s.whatsapp.net). Grupo nunca vira admin (ver roteador.py).
 ADMIN_JID = _ler_segredo("ADMIN_JID", "admin_jid.txt")
+# Outras formas do mesmo chat (a @lid), separadas por espaço ou linha.
+JIDS_DONO = {ADMIN_JID, *_ler_segredo("JIDS_DONO_EXTRA", "jids_dono.txt").split()}
+
+# Trava geral do envio a terceiros. Com False nada sai para outras pessoas,
+# nem em piloto: o portão só registra no diário. Abrir é decisão do dono.
+ENVIO_TERCEIROS_HABILITADO = False
 
 # Onde o servidor do webhook escuta.
 WEBHOOK_HOST = os.environ.get("WEBHOOK_HOST", "127.0.0.1")

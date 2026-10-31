@@ -17,8 +17,10 @@ import threading
 import time
 
 import config
+import atendimento
 import canal_whatsapp as canal
 import cerebro
+import comandos_piloto
 import rotinas
 from cerebro import executar_comando
 
@@ -609,13 +611,20 @@ def main():
 
     def _ao_receber(texto: str):
         try:
+            resposta = comandos_piloto.tratar(texto)
+            if resposta is not None:
+                registrar_log(texto, "[piloto] comando")
+                canal.enviar_mensagem(resposta)
+                return
             if not processar_mensagem(texto):
                 print("[main] Encerramento pedido via mensagem.")
         except Exception as e:  # noqa: BLE001 — callback do webhook não pode morrer
             print(f"[main] Erro processando mensagem recebida: {e}", file=sys.stderr)
             registrar_log(texto, f"ERRO ao processar mensagem recebida: {e}")
 
-    canal.iniciar_webhook(ao_receber_mensagem=_ao_receber)
+    canal.iniciar_webhook(ao_admin=_ao_receber,
+                          ao_terceiro=atendimento.ao_terceiro,
+                          ao_dono_entrou=atendimento.ao_dono_entrou)
     canal.enviar_mensagem("Assistente pronto.")
 
     snap_ref = [_snapshot_arquivos()]

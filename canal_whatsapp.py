@@ -4,8 +4,8 @@ O assistente NÃO traz um MCP de WhatsApp próprio. Aqui só ficam duas coisas
 simples:
 
 - entrada: a bridge faz POST de cada mensagem em `WEBHOOK_URL` (um servidor
-  local sobe em `iniciar_webhook`). Só mensagens do chat `ADMIN_JID` passam;
-  o resto é descartado antes de chegar ao Claude.
+  local sobe em `iniciar_webhook`). Cada mensagem é classificada pelo
+  `roteador` e despachada: só a rota ADMIN chega ao Claude como ordem.
 - saída: a resposta final do Claude volta pelo `/api/send` da bridge.
 
 Tudo o que o Claude faz além disso com WhatsApp (buscar contato, ler
@@ -25,13 +25,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import requests
 
 import config
+from roteador import classificar, evento_de_payload
+from tipos import Rota
 
 _lock_envio = threading.Lock()
 _ultimo_envio = 0.0
 
-# Textos que o próprio assistente acabou de mandar. O chat do admin é um
-# grupo só com o usuário, então o comando dele e a resposta do bot chegam os
-# dois com isFromMe=true; o eco da resposta é reconhecido por este registro.
+# Textos que o próprio assistente acabou de mandar. No chat do dono consigo
+# mesmo, o comando dele e a resposta do bot chegam os dois com isFromMe=true;
+# o eco da resposta é reconhecido por este registro.
 _enviados_recentes: list = []
 _lock_enviados = threading.Lock()
 _JANELA_ECO_SEG = 180.0
@@ -86,7 +88,10 @@ def enviar_mensagem(texto: str, destinatario: str = None) -> bool:
             time.sleep(espera)
         _ultimo_envio = time.monotonic()
     texto = para_whatsapp(texto)
-    _lembrar_enviado(texto)
+    # Só o que vai ao chat do dono volta como eco nele; lembrar o resto faria
+    # uma ordem igual a um texto enviado a terceiro ser descartada.
+    if alvo in getattr(config, "JIDS_DONO", {config.ADMIN_JID}):
+        _lembrar_enviado(texto)
     try:
         r = requests.post(f"{config.BRIDGE_URL}/api/send", headers=_cabecalhos(),
                           json={"recipient": alvo, "message": texto}, timeout=60)
@@ -118,7 +123,8 @@ def _texto_do_evento(dados: dict) -> str:
     """
     if dados.get("eventType") == "reaction":
         return ""
-    texto = (dados.get("content") or "").strip()
+    texto = dados.get("content")
+    texto = texto.strip() if isinstance(texto, str) else ""
     midia = dados.get("mediaType") or ""
     if not midia:
         return texto
@@ -129,7 +135,53 @@ def _texto_do_evento(dados: dict) -> str:
     return f"{aviso}\n{texto}" if texto else aviso
 
 
-def _fazer_handler(ao_receber_mensagem):
+def _token_valido(enviado: str) -> bool:
+    # Em bytes: compare_digest lança TypeError com str não ASCII, e o cabeçalho
+    # vem de quem ainda não foi autenticado.
+    return bool(config.BRIDGE_TOKEN) and hmac.compare_digest(
+        enviado.encode(), config.BRIDGE_TOKEN.encode())
+
+
+def _ler_json(handler: BaseHTTPRequestHandler):
+    try:
+        tamanho = max(int(handler.headers.get("Content-Length") or 0), 0)
+    except ValueError:
+        tamanho = 0
+    try:
+        return json.loads(handler.rfile.read(tamanho) or b"{}")
+    except ValueError:
+        return {}
+
+
+def _rodar_callback(callback, evento) -> None:
+    # A mensagem da exceção pode trazer texto de terceiro, então só o tipo
+    # vai para o log.
+    try:
+        callback(evento)
+    except Exception as e:  # noqa: BLE001
+        print(f"[canal] Falha ao tratar evento: {type(e).__name__}")
+
+
+def _fazer_handler(ao_admin, ao_terceiro=None, ao_dono_entrou=None):
+    callbacks_de_evento = {Rota.TERCEIRO: ao_terceiro,
+                           Rota.DONO_ENTROU: ao_dono_entrou}
+
+    def despachar(dados) -> None:
+        evento = evento_de_payload(dados)
+        jids_dono = getattr(config, "JIDS_DONO", {config.ADMIN_JID})
+        rota = classificar(evento, jids_dono)
+        if rota == Rota.ADMIN:
+            texto = _texto_do_evento(dados)
+            if not texto or _eh_eco_proprio(texto):
+                return
+            threading.Thread(target=ao_admin, args=(texto,),
+                             daemon=True).start()
+            return
+        callback = callbacks_de_evento.get(rota)
+        if callback is not None:
+            threading.Thread(target=_rodar_callback, args=(callback, evento),
+                             daemon=True).start()
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):  # silencia o log por requisição
             pass
@@ -139,39 +191,32 @@ def _fazer_handler(ao_receber_mensagem):
                 self.send_response(404)
                 self.end_headers()
                 return
-            enviado = self.headers.get("X-Bridge-Token", "")
-            if not config.BRIDGE_TOKEN or not hmac.compare_digest(
-                    enviado, config.BRIDGE_TOKEN):
+            if not _token_valido(self.headers.get("X-Bridge-Token", "")):
                 self.send_response(401)
                 self.end_headers()
                 return
-            tamanho = int(self.headers.get("Content-Length") or 0)
-            try:
-                dados = json.loads(self.rfile.read(tamanho) or b"{}")
-            except ValueError:
-                dados = {}
+            dados = _ler_json(self)
             # Responde logo; o processamento não segura a bridge.
             self.send_response(200)
             self.end_headers()
-
-            if dados.get("chatJID") != config.ADMIN_JID:
-                return
-            texto = _texto_do_evento(dados)
-            if not texto or _eh_eco_proprio(texto):
-                return
-            threading.Thread(target=ao_receber_mensagem, args=(texto,),
-                             daemon=True).start()
+            despachar(dados)
 
     return Handler
 
 
-def iniciar_webhook(ao_receber_mensagem) -> None:
-    """Sobe o servidor do webhook numa thread daemon (não bloqueia)."""
+def iniciar_webhook(ao_admin, ao_terceiro=None, ao_dono_entrou=None) -> None:
+    """Sobe o servidor do webhook numa thread daemon (não bloqueia).
+
+    `ao_admin(texto)` recebe as ordens do dono. `ao_terceiro(evento)` e
+    `ao_dono_entrou(evento)` recebem o Evento; sem callback, a rota é
+    descartada em silêncio.
+    """
     if not config.ADMIN_JID or not config.BRIDGE_TOKEN:
         raise RuntimeError("Defina ADMIN_JID e WHATSAPP_BRIDGE_TOKEN "
                            "(variável de ambiente ou arquivo em secrets/).")
-    servidor = ThreadingHTTPServer((config.WEBHOOK_HOST, config.WEBHOOK_PORTA),
-                                   _fazer_handler(ao_receber_mensagem))
+    servidor = ThreadingHTTPServer(
+        (config.WEBHOOK_HOST, config.WEBHOOK_PORTA),
+        _fazer_handler(ao_admin, ao_terceiro, ao_dono_entrou))
     threading.Thread(target=servidor.serve_forever, daemon=True).start()
     print(f"[canal] Webhook escutando em "
           f"{config.WEBHOOK_HOST}:{config.WEBHOOK_PORTA}/webhook")

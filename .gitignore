@@ -26,3 +26,5 @@ ruvector.db*
 .claude-flow/logs/
 .claude-flow/sessions/
 assistente.out
+estado_piloto.json
+diario_piloto.jsonl

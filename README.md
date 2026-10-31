@@ -42,10 +42,10 @@ pip install -r requirements.txt
 mkdir -p secrets
 ```
 
-1. Crie um grupo no WhatsApp só com você (ex.: "Claude Assistent") e descubra o JID dele (`...@g.us`) com `list_chats` do MCP.
+1. O canal é o seu chat consigo mesmo no WhatsApp. O JID é `<seu-número>@s.whatsapp.net`.
 2. Grave o JID e o token da bridge:
    ```bash
-   printf '%s' '<jid-do-grupo>@g.us' > secrets/admin_jid.txt
+   printf '%s' '<seu-número>@s.whatsapp.net' > secrets/admin_jid.txt
    cp <pasta-da-bridge>/store/.bridge-token secrets/bridge_token.txt
    ```
 3. Na bridge, aponte o webhook para o assistente:
@@ -64,8 +64,8 @@ mkdir -p secrets
    python main.py
    ```
 
-Mande uma mensagem no grupo. Só esse chat é atendido; mensagens de qualquer outro
-chat são descartadas antes de chegar ao Claude.
+Mande uma mensagem para você mesmo. Só esse chat dá ordens. Mensagens de outras
+pessoas nunca chegam ao Claude que tem ferramentas (ver Segurança).
 
 ### Como serviço (Linux)
 
@@ -97,7 +97,16 @@ liste o servidor em `.claude/settings.json`:
 O assistente aceita ordens e executa ações na sua máquina e nas suas contas.
 Trate-o como acesso remoto:
 
-- Só o chat configurado em `ADMIN_JID` é atendido. Use um grupo só seu.
+- Só o seu chat consigo mesmo dá ordens, e só com mensagem sua (`isFromMe`). Tudo
+  que vier nele será lido pelo Claude, inclusive anotações: não guarde senha ali.
+- Mensagem de outra pessoa nunca chega ao Cérebro. Ela só vai ao Atendente
+  (`atendente.py`), um Claude sem ferramentas, MCP, hooks ou arquivos, que propõe uma
+  resposta. O portão (`portao.py`), em código, decide se ela sai.
+- Nada sai para terceiros com `ENVIO_TERCEIROS_HABILITADO = False` (padrão).
+- O Cérebro ainda pode ler mensagens de terceiros pelo MCP quando você pede. Esse
+  conteúdo é dado, não ordem, mas a barreira aí é o julgamento do Claude.
+- Comandos no seu chat: `volta` (corta tudo), `copiloto`, `assume tudo`,
+  `assume <escopo>`, `devolve <escopo>`, `status`.
 - Não existe confirmação mecânica no app. Quem decide quando pedir confirmação
   é o Claude, guiado pelo `CLAUDE.md`. Leia esse arquivo antes de dar acesso a
   algo sensível.
