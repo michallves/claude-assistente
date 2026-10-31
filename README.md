@@ -52,14 +52,35 @@ mkdir -p secrets
    ```bash
    WEBHOOK_ENABLED=true
    WEBHOOK_URL=http://127.0.0.1:8100/webhook
+   WEBHOOK_NOTIFY_MEDIA=true
    ```
-4. Suba o assistente:
+   Sem `WEBHOOK_NOTIFY_MEDIA=true`, a bridge só avisa texto e imagem: áudio,
+   vídeo e documento não chegam ao assistente.
+4. Rode `claude` uma vez dentro da pasta do projeto e aceite o aviso de confiança.
+   Sem isso o Claude Code ignora o `allow` de `.claude/settings.json`, e as
+   ferramentas ficam pedindo uma permissão que ninguém consegue dar.
+5. Suba o assistente:
    ```bash
    python main.py
    ```
 
 Mande uma mensagem no grupo. Só esse chat é atendido; mensagens de qualquer outro
 chat são descartadas antes de chegar ao Claude.
+
+### Como serviço (Linux)
+
+Para subir com a máquina e voltar sozinho se cair, use o serviço de usuário do
+systemd em `deploy/claude-assistente.service`. Ele assume o projeto em
+`~/projects/claude-assistente`; ajuste os caminhos se for outro lugar.
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp deploy/claude-assistente.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now claude-assistente
+loginctl enable-linger "$USER"
+journalctl --user -u claude-assistente -f
+```
 
 ## Usando outros MCPs
 

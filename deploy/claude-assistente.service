@@ -1,0 +1,14 @@
+[Unit]
+Description=Claude Assistente (WhatsApp)
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h/projects/claude-assistente
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=%h/projects/claude-assistente/.venv/bin/python main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
