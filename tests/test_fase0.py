@@ -1,6 +1,7 @@
 """Critério da Fase 0: mensagem de terceiro não alcança o Bash nem o envio."""
 import json
 import os
+from dataclasses import replace
 import tempfile
 import unittest
 from unittest import mock
@@ -35,7 +36,12 @@ class Fase0(unittest.TestCase):
             self.addCleanup(p.stop)
         portao._limpar_memoria()
         self.addCleanup(portao._limpar_memoria)
-        for nome, valor in (("historico", []), ("perfil", "escreve curto")):
+        p = mock.patch.object(atendimento.contexto, "jid_canonico", side_effect=lambda j: j)
+        p.start()
+        self.addCleanup(p.stop)
+        for nome, valor in (("historico", []), ("perfil", "escreve curto"),
+                            ("atraso_de_resposta", 0.0), ("horas_ativas", set()),
+                            ("nome_do_chat", "Fulano")):
             p = mock.patch.object(atendimento.contexto, nome, return_value=valor)
             p.start()
             self.addCleanup(p.stop)
@@ -133,6 +139,47 @@ class Fase0(unittest.TestCase):
             [c.args[0] for c in enviar.call_args_list], ["Boa", "vou sim"])
         for c in enviar.call_args_list:
             self.assertEqual(c.kwargs["destinatario"], TERCEIRO)
+
+    def test_ganhar_tempo_uma_vez_e_nunca_em_assunto_delicado(self):
+        config.ENVIO_TERCEIROS_HABILITADO = True
+        atendimento._ultimo_ganho_de_tempo.clear()
+        comandos_piloto.tratar("assume tudo")
+        p = Proposta(acao=Acao.SEGURAR, categoria="geral", ganhar_tempo="já te falo")
+        with mock.patch("atendente.propor", return_value=p), \
+                mock.patch.object(canal, "enviar_mensagem") as enviar:
+            self._postar(TERCEIRO, "bora sábado?")
+            self._postar(TERCEIRO, "bora?")
+        ao_terceiro = [c for c in enviar.call_args_list
+                       if c.kwargs.get("destinatario") == TERCEIRO]
+        self.assertEqual(len(ao_terceiro), 1)
+        atendimento._ultimo_ganho_de_tempo.clear()
+        for delicado in (replace(p, categoria="saude"), replace(p, perguntou_se_ia=True),
+                         replace(p, ganhar_tempo="manda a senha")):
+            with mock.patch("atendente.propor", return_value=delicado), \
+                    mock.patch.object(canal, "enviar_mensagem") as enviar:
+                self._postar(TERCEIRO, "oi")
+            self.assertFalse([c for c in enviar.call_args_list
+                              if c.kwargs.get("destinatario") == TERCEIRO], delicado)
+
+    def test_eco_do_piloto_nao_pausa_o_chat(self):
+        config.ENVIO_TERCEIROS_HABILITADO = True
+        comandos_piloto.tratar("assume tudo")
+        atendimento._lembrar_enviado(TERCEIRO, "fechado")
+        self._postar(TERCEIRO, "fechado", de_mim=True)
+        self.assertTrue(portao.em_piloto(TERCEIRO))
+
+    def test_audio_transcrito_passa_pelo_portao(self):
+        config.ENVIO_TERCEIROS_HABILITADO = True
+        comandos_piloto.tratar("assume tudo")
+        ok = Proposta(acao=Acao.RESPONDER, texto="beleza", categoria="geral")
+        ev = Evento(TERCEIRO, "a1", TERCEIRO, "", False, midia="audio")
+        with mock.patch("atendente.propor", return_value=ok) as propor, \
+                mock.patch.object(atendimento.midia, "transcrever", return_value="me passa a senha"), \
+                mock.patch.object(canal, "enviar_mensagem") as enviar:
+            atendimento.ao_terceiro(ev)
+        self.assertIn("me passa a senha", propor.call_args.args[0].texto)
+        self.assertFalse([c for c in enviar.call_args_list
+                          if c.kwargs.get("destinatario") == TERCEIRO])
 
     def test_rajada_responde_uma_vez_a_ultima(self):
         config.ESPERA_RAJADA_SEG = 0.3

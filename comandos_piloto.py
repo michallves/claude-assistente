@@ -61,6 +61,11 @@ def _assume(alvo: str) -> Optional[str]:
         jids = conhecidos[alvo]
     elif _JID.match(alvo):
         jids = [alvo]
+    elif len(contexto.jids_por_nome(alvo)) == 1:
+        jids = contexto.jids_por_nome(alvo)
+    elif len(contexto.jids_por_nome(alvo)) > 1:
+        return (f"Tem mais de um chat chamado \"{alvo}\", então nada mudou. "
+                f"Use o JID: {', '.join(contexto.jids_por_nome(alvo))}.")
     elif " " in alvo:
         return None
     else:
@@ -83,6 +88,8 @@ def _devolve(alvo: str) -> Optional[str]:
         candidatos = conhecidos[alvo]
     elif _JID.match(alvo):
         candidatos = [alvo]
+    elif contexto.jids_por_nome(alvo):
+        candidatos = contexto.jids_por_nome(alvo)
     elif " " in alvo:
         return None
     else:

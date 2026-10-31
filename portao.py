@@ -325,6 +325,19 @@ def _no_escopo(atual: Estado, chat_jid: str) -> bool:
     return any(chat_jid in jids for jids in atual.escopos.values())
 
 
+def pode_ganhar_tempo(proposta: Proposta, decisao: Decisao) -> bool:
+    """Só em resposta segurada por falta do dono, nunca em assunto delicado, pergunta
+    sobre ser IA, conteúdo sensível, corte ou chat pausado."""
+    frase = (proposta.ganhar_tempo or "").strip()
+    return (trava_envio_aberta()
+            and decisao.veredito is Veredito.CHAMAR_DONO
+            and decisao.detalhes.get("regra") in ("segurar", "demanda")
+            and not proposta.perguntou_se_ia
+            and normalizar(str(proposta.categoria or "")) not in CATEGORIAS_LINHA_VERMELHA
+            and bool(frase) and "\n" not in frase and len(frase) <= 60
+            and not detectar_sensivel(frase))
+
+
 def em_piloto(chat_jid: str) -> bool:
     """True se este chat está sob o piloto agora. Fora disso nem vale gastar o
     Atendente nem pausar o chat quando o dono escreve nele."""

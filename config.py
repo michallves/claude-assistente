@@ -56,6 +56,11 @@ DB_MENSAGENS = os.environ.get("WHATSAPP_DB_PATH", os.path.expanduser(
     "~/projects/whatsapp-mcp/whatsapp-bridge/store/messages.db"))
 ARQUIVO_PERFIL_ESCRITA = os.environ.get("ARQUIVO_PERFIL_ESCRITA", os.path.expanduser(
     "~/.claude/skills/humanizar-michael/SKILL.md"))
+TRANSCRICAO_URL = os.environ.get(
+    "WHATSAPP_TRANSCRIPTION_URL", "http://127.0.0.1:8178/v1/audio/transcriptions")
+TRANSCRICAO_MODELO = os.environ.get("WHATSAPP_TRANSCRIPTION_MODEL", "large-v3-turbo")
+# Haiku segurava quase tudo no teste com conversas antigas; Sonnet acerta mais o tom.
+MODELO_ATENDENTE = "claude-sonnet-5-5"
 # Quanto o piloto espera a pessoa parar de digitar antes de propor uma resposta.
 ESPERA_RAJADA_SEG = 20.0
 

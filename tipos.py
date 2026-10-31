@@ -52,6 +52,7 @@ class Proposta:
     categoria: str = ""        # ver CATEGORIAS_LINHA_VERMELHA em portao.py
     demanda: Optional[str] = None  # pedido de ação detectado, em uma frase
     perguntou_se_ia: bool = False
+    ganhar_tempo: str = ""     # frase curta para a pessoa enquanto o dono não vê
 
 
 @dataclass(frozen=True)

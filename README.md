@@ -102,6 +102,9 @@ Trate-o como acesso remoto:
 - Mensagem de outra pessoa nunca chega ao Cérebro. Ela só vai ao Atendente
   (`atendente.py`), um Claude sem ferramentas, MCP, hooks ou arquivos, que propõe uma
   resposta. O portão (`portao.py`), em código, decide se ela sai.
+- Com a trava aberta o piloto responde no ritmo real do dono: a demora é sorteada das
+  demoras reais naquele chat, e fora das horas em que ele costuma escrever a resposta
+  espera. Timers ficam em memória: reiniciar o app perde o que estava esperando.
 - Nada sai para terceiros com `ENVIO_TERCEIROS_HABILITADO = False` (padrão).
 - O Cérebro ainda pode ler mensagens de terceiros pelo MCP quando você pede. Esse
   conteúdo é dado, não ordem, mas a barreira aí é o julgamento do Claude.

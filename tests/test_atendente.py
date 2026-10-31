@@ -211,7 +211,7 @@ class TestInvocacao(BaseMock):
         cmd = self._chamada().args[0]
         pares = {"--tools": "", "--mcp-config": '{"mcpServers":{}}', "--setting-sources": "",
                  "--permission-mode": "dontAsk", "--permission-prompts": "none",
-                 "--model": "claude-haiku-5-5", "--output-format": "stream-json"}
+                 "--model": "claude-sonnet-5-5", "--output-format": "stream-json"}
         for flag, valor in pares.items():
             self.assertEqual(cmd[cmd.index(flag) + 1], valor, flag)
         for flag in ("--strict-mcp-config", "--safe-mode", "--restricted",
