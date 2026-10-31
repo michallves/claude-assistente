@@ -17,6 +17,7 @@ Repositório da bridge e do MCP: https://github.com/michallves/whatsapp-mcp
 """
 import hmac
 import json
+import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -61,6 +62,18 @@ def _eh_eco_proprio(texto: str) -> bool:
     return False
 
 
+def para_whatsapp(texto: str) -> str:
+    """Converte o markdown que o Claude costuma escrever para o dialeto do
+    WhatsApp: `**negrito**` vira `*negrito*` e títulos `# x` viram `*x*`.
+    Blocos de código (```) ficam como estão."""
+    partes = re.split(r"(```.*?```)", texto, flags=re.S)
+    for i in range(0, len(partes), 2):
+        t = re.sub(r"\*\*(.+?)\*\*", r"*\1*", partes[i], flags=re.S)
+        t = re.sub(r"^#{1,6}[ \t]+(.+?)[ \t]*$", r"*\1*", t, flags=re.M)
+        partes[i] = t
+    return "".join(partes)
+
+
 def enviar_mensagem(texto: str, destinatario: str = None) -> bool:
     """Manda `texto` pro chat do admin (ou pra `destinatario`, se informado)."""
     global _ultimo_envio
@@ -72,6 +85,7 @@ def enviar_mensagem(texto: str, destinatario: str = None) -> bool:
         if espera > 0:
             time.sleep(espera)
         _ultimo_envio = time.monotonic()
+    texto = para_whatsapp(texto)
     _lembrar_enviado(texto)
     try:
         r = requests.post(f"{config.BRIDGE_URL}/api/send", headers=_cabecalhos(),
