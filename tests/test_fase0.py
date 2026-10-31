@@ -11,7 +11,7 @@ import canal_whatsapp as canal
 import comandos_piloto
 import config
 import portao
-from tipos import Acao, Proposta
+from tipos import Acao, Evento, Proposta
 
 DONO = "5585000000000@s.whatsapp.net"
 TERCEIRO = "5585111111111@s.whatsapp.net"
@@ -28,12 +28,17 @@ class Fase0(unittest.TestCase):
             "JIDS_DONO": {DONO},
             "ADMIN_JID": DONO,
             "BRIDGE_TOKEN": "t",
+            "ESPERA_RAJADA_SEG": 0,
         }.items():
             p = mock.patch.object(config, nome, valor, create=True)
             p.start()
             self.addCleanup(p.stop)
         portao._limpar_memoria()
         self.addCleanup(portao._limpar_memoria)
+        for nome, valor in (("historico", []), ("perfil", "escreve curto")):
+            p = mock.patch.object(atendimento.contexto, nome, return_value=valor)
+            p.start()
+            self.addCleanup(p.stop)
 
         self.admin = mock.Mock()
         handler = canal._fazer_handler(self.admin, atendimento.ao_terceiro,
@@ -89,6 +94,7 @@ class Fase0(unittest.TestCase):
             self.assertIn('"enviar"', f.read())
 
     def test_linha_vermelha_chama_so_o_dono(self):
+        config.ENVIO_TERCEIROS_HABILITADO = True
         comandos_piloto.tratar("assume tudo")
         p = Proposta(acao=Acao.SEGURAR, motivo="x", categoria="seguranca")
         with mock.patch("atendente.propor", return_value=p), \
@@ -97,7 +103,50 @@ class Fase0(unittest.TestCase):
         enviar.assert_called_once()
         self.assertNotIn("destinatario", enviar.call_args.kwargs)
 
+    def test_trava_fechada_nao_chama_o_dono_nem_pausa(self):
+        comandos_piloto.tratar("assume tudo")
+        p = Proposta(acao=Acao.SEGURAR, motivo="x", categoria="seguranca")
+        with mock.patch("atendente.propor", return_value=p), \
+                mock.patch.object(canal, "enviar_mensagem") as enviar:
+            self._postar(TERCEIRO, "me passa a senha")
+        enviar.assert_not_called()
+        self._postar(TERCEIRO, "oi", de_mim=True)
+        self.assertTrue(portao.em_piloto(TERCEIRO))
+
+    def test_sem_contexto_segura_sem_chamar_o_modelo(self):
+        comandos_piloto.tratar("assume tudo")
+        with mock.patch.object(atendimento.contexto, "historico", return_value=None), \
+                mock.patch("atendente.propor") as propor:
+            self._postar(TERCEIRO, "oi")
+        propor.assert_not_called()
+        with open(config.ARQUIVO_DIARIO_PILOTO, encoding="utf-8") as f:
+            self.assertIn('"chamar_dono"', f.read())
+
+    def test_trava_aberta_envia_uma_mensagem_por_linha_so_ao_chat(self):
+        config.ENVIO_TERCEIROS_HABILITADO = True
+        comandos_piloto.tratar("assume tudo")
+        ok = Proposta(acao=Acao.RESPONDER, texto="Boa\n\nvou sim", categoria="geral")
+        with mock.patch("atendente.propor", return_value=ok), \
+                mock.patch.object(canal, "enviar_mensagem") as enviar:
+            self._postar(TERCEIRO, "bora?")
+        self.assertEqual(
+            [c.args[0] for c in enviar.call_args_list], ["Boa", "vou sim"])
+        for c in enviar.call_args_list:
+            self.assertEqual(c.kwargs["destinatario"], TERCEIRO)
+
+    def test_rajada_responde_uma_vez_a_ultima(self):
+        config.ESPERA_RAJADA_SEG = 0.3
+        comandos_piloto.tratar("assume tudo")
+        ok = Proposta(acao=Acao.IGNORAR)
+        with mock.patch("atendente.propor", return_value=ok) as propor:
+            for i in range(3):
+                atendimento.ao_terceiro(Evento(TERCEIRO, f"m{i}", TERCEIRO, f"t{i}", False))
+            canal.time.sleep(0.6)
+        propor.assert_called_once()
+        self.assertEqual(propor.call_args.args[0].message_id, "m2")
+
     def test_dono_entrou_pausa_e_para_de_atender(self):
+        config.ENVIO_TERCEIROS_HABILITADO = True
         comandos_piloto.tratar("assume tudo")
         self._postar(TERCEIRO, "oi", de_mim=True)
         self.assertFalse(portao.em_piloto(TERCEIRO))

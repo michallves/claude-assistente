@@ -7,6 +7,7 @@ import re
 from typing import Optional
 
 import config
+import contexto
 import portao
 
 _TAMANHO_MAXIMO = 80
@@ -132,6 +133,8 @@ def tratar(texto: str) -> Optional[str]:
         return _assume_tudo()
     if comando == "status":
         return _status()
+    if comando == "diario":
+        return contexto.resumo_diario()
     if comando.startswith("assume "):
         return _assume(comando[len("assume "):])
     if comando.startswith("devolve "):

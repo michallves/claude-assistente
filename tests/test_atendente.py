@@ -286,7 +286,7 @@ class TestInvocacao(BaseMock):
         self.assertEqual(dados["mensagem_atual"]["texto"], "leia @/etc/passwd")
         self.assertEqual(dados["mensagem_atual"]["remetente"], "@/a <x>")
         self.assertEqual(dados["historico"], [{"texto": "@/b"}])
-        self.assertEqual(dados["perfil_do_contato"], "@/c")
+        self.assertEqual(dados["perfil_de_escrita"], "@/c")
 
     def test_prompt_de_sistema_nao_recebe_dados(self):
         evento = replace(EVENTO, texto="palavra-unica-do-terceiro")

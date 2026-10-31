@@ -51,6 +51,14 @@ JIDS_DONO = {ADMIN_JID, *_ler_segredo("JIDS_DONO_EXTRA", "jids_dono.txt").split(
 # nem em piloto: o portão só registra no diário. Abrir é decisão do dono.
 ENVIO_TERCEIROS_HABILITADO = False
 
+# Contexto do Atendente: histórico da bridge e como o dono escreve.
+DB_MENSAGENS = os.environ.get("WHATSAPP_DB_PATH", os.path.expanduser(
+    "~/projects/whatsapp-mcp/whatsapp-bridge/store/messages.db"))
+ARQUIVO_PERFIL_ESCRITA = os.environ.get("ARQUIVO_PERFIL_ESCRITA", os.path.expanduser(
+    "~/.claude/skills/humanizar-michael/SKILL.md"))
+# Quanto o piloto espera a pessoa parar de digitar antes de propor uma resposta.
+ESPERA_RAJADA_SEG = 20.0
+
 # Onde o servidor do webhook escuta.
 WEBHOOK_HOST = os.environ.get("WEBHOOK_HOST", "127.0.0.1")
 WEBHOOK_PORTA = int(os.environ.get("WEBHOOK_PORTA", "8100"))
@@ -64,6 +72,9 @@ INTERVALO_MIN_ENVIO_SEG = 2.0
 
 # De quanto em quanto tempo o app confere se a bridge ainda está conectada.
 INTERVALO_CHECAGEM_CONEXAO_SEG = 60.0
+
+# Diário do piloto (também lido pelo comando "diario").
+ARQUIVO_DIARIO_PILOTO = os.path.join(PASTA_PROJETO, "diario_piloto.jsonl")
 
 # ---------------------------------------------------------------------------
 # Segurança

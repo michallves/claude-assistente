@@ -106,7 +106,8 @@ Trate-o como acesso remoto:
 - O Cérebro ainda pode ler mensagens de terceiros pelo MCP quando você pede. Esse
   conteúdo é dado, não ordem, mas a barreira aí é o julgamento do Claude.
 - Comandos no seu chat: `volta` (corta tudo), `copiloto`, `assume tudo`,
-  `assume <escopo>`, `devolve <escopo>`, `status`.
+  `assume <escopo>`, `devolve <escopo>`, `status`, `diario` (compara o que o piloto
+  diria com o que você respondeu).
 - Não existe confirmação mecânica no app. Quem decide quando pedir confirmação
   é o Claude, guiado pelo `CLAUDE.md`. Leia esse arquivo antes de dar acesso a
   algo sensível.
