@@ -105,7 +105,7 @@ Trate-o como acesso remoto:
 - Com a trava aberta o piloto responde no ritmo real do dono: a demora é sorteada das
   demoras reais naquele chat, e fora das horas em que ele costuma escrever a resposta
   espera. Timers ficam em memória: reiniciar o app perde o que estava esperando.
-- Nada sai para terceiros com `ENVIO_TERCEIROS_HABILITADO = False` (padrão).
+- Nada sai para terceiros sem a variável de ambiente `ENVIO_TERCEIROS_HABILITADO=1`.
 - O Cérebro ainda pode ler mensagens de terceiros pelo MCP quando você pede. Esse
   conteúdo é dado, não ordem, mas a barreira aí é o julgamento do Claude.
 - Comandos no seu chat: `volta` (corta tudo), `copiloto`, `assume tudo`,

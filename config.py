@@ -48,8 +48,9 @@ ADMIN_JID = _ler_segredo("ADMIN_JID", "admin_jid.txt")
 JIDS_DONO = {ADMIN_JID, *_ler_segredo("JIDS_DONO_EXTRA", "jids_dono.txt").split()}
 
 # Trava geral do envio a terceiros. Com False nada sai para outras pessoas,
-# nem em piloto: o portão só registra no diário. Abrir é decisão do dono.
-ENVIO_TERCEIROS_HABILITADO = False
+# nem em piloto: o portão só registra no diário. Abrir é decisão do dono, por
+# variável de ambiente, para o padrão do código continuar fechado.
+ENVIO_TERCEIROS_HABILITADO = os.environ.get("ENVIO_TERCEIROS_HABILITADO") == "1"
 
 # Contexto do Atendente: histórico da bridge e como o dono escreve.
 DB_MENSAGENS = os.environ.get("WHATSAPP_DB_PATH", os.path.expanduser(
